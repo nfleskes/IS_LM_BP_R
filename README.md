@@ -15,8 +15,6 @@ reshape2
 
 ### Citations
 
-This code was adapted an EViews 8 simulation script
+This code was adapted from our professor's EViews 8 simulation script for a course in Macroeconomics (PSME Fall 2018).
 
 The EViews script can be found [here](https://luisreyesortiz.org/resources/) under the heading "EViews 8 simulation script for Mundell-Flemming model under a fixed exchange rate regime (static)"
-
-Created for Macroeconomics, PSME Fall 2018
