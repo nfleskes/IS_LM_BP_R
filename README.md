@@ -1,5 +1,5 @@
 # IS_LM_BP_R
-IS LM BP (Mundell-Flemming) model, fixed exhange rate regime
+IS LM BP (Mundell-Flemming) model, fixed and floating exhange rate regimes
 
 ### Prerequisites
 
