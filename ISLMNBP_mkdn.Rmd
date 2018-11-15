@@ -1,0 +1,237 @@
+---
+title: "IS LM BP under Fixed and Floating Exchange Rate Regimes"
+author: "Nicole Fleskes"
+date: "November 15, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("reshape2")
+library("ggplot2")
+```
+
+## IS LM BP under Fixed and Floating Exchange rate Regimes
+
+### Fixed
+
+#### First, we define our variables:
+
+```{r variables1}
+a_0 <- 80 # autonomous consumption
+a_1 <- 0.8 # marginal propensity to consume
+i_0 <- 25 # autonomous private investment
+i_1 <- -5 # marginal propensity to invest
+g_0 <- 40 # government expenditure
+x_0 <- 25 # autonomous level of exports
+m_0 <- 20 # autonomous level of imports
+m_1 <- 0.15 # marginal propensity to import
+t_rate <- 0.15 # Tax rate
+c_1 <- (a_0+i_0+g_0+x_0-m_0) # autonomous values
+c_2 <- (1-a_1*(1-t_rate)+m_1) # marginal values
+l_1 <- 0.5 # liquidity function for motive 1
+l_2 <- -5 # liquidity function for motive 2
+k_prm <- 6 # increase in financial account (function of the interest rate)
+```
+
+#### Then we calculate the interest rate, equilibrium y, and money supply:
+
+```{r Calculations}
+int_rate_calc <- (((x_0-m_0)/m_1)-(c_1/c_2))/((i_1/c_2)-(k_prm/m_1))
+y_calc <- ((x_0-m_0)/m_1)+(k_prm*int_rate_calc/m_1)
+m_no_bar <- l_1*y_calc+l_2*int_rate_calc
+```
+
+```{r print, echo=FALSE}
+print("Interest rate:")
+int_rate_calc
+print("Output:")
+y_calc
+print("Money Supply:")
+m_no_bar
+```
+
+#### Create a dataframe with 1000 rows called IS_LM_BP with a column of observation numbers.
+
+```{r df}
+obs <- c(seq(1,1000,by=1))
+IS_LM_BP <- data.frame(obs)
+head(IS_LM_BP)
+```
+
+#### Perform our dataframe operations to fill it with the values for the curves.
+
+```{r df operations}
+#Generate Data
+IS_LM_BP["int_rate_s"] <- IS_LM_BP["obs"]/100
+IS_LM_BP["Y_IS"] <- (c_1/c_2)+(i_1*IS_LM_BP["int_rate_s"]/c_2)
+IS_LM_BP["Y_LM"] <- (m_no_bar/l_1)-(l_2*IS_LM_BP["int_rate_s"]/l_1)
+IS_LM_BP["Y_BP"] <- ((x_0-m_0)/m_1)+(k_prm*IS_LM_BP["int_rate_s"]/m_1)
+
+#Drop obs cols
+IS_LM_BP <- IS_LM_BP[-c(1)]
+head(IS_LM_BP)
+```
+
+#### Calculate the IS, LM, and BP curve equilibrium values. All of the output values should be the same!
+
+```{r curves}
+y_is = (c_1/c_2)+(i_1*int_rate_calc/c_2)
+y_lm = (m_no_bar/l_1)-(l_2*int_rate_calc/l_1)
+y_bp = ((x_0-m_0)/m_1)+(k_prm*int_rate_calc/m_1)
+```
+
+``` {r curvesprint, echo=FALSE}
+print("Equilibrium level of output from the IS curve:")
+y_is
+
+print("Equilibrium level of output from the LM curve")
+y_lm
+
+print("Equilibrium level of output from the BP curve")
+y_bp
+```
+
+#### Melt the dataframe into long format
+
+First, however, we have to melt the data frame into a long form.
+
+Wide format: Each observation has it's own row. In this case, each interest rate and it's corresponding values for IS, LM, and BP are contained in a column in the same row.
+
+Long Format: Each unit of analysis is separated into it's own row. In this case, each interest rate is going to have have a row for each IS, LM, and BP value.
+
+We "melt" the data frame to change the formats to allow us to graph it.
+
+```{r reshape and plot}
+#Before reshape
+head(IS_LM_BP)
+
+#reshapea and rename df 
+df <- melt(IS_LM_BP, id="int_rate_s")
+
+#after reshape
+head(df,10)
+```
+
+As you can see above, the reshaped dataframe only has columns for the interest rate, the variable label, and the variable value.
+
+Why do we do this? In order to graph multiple lines on one plot, we need one set of x and y values. Melting the dataframe into long format allows us to plot all the data on one graph easily.
+
+x values to plot: intrest rate
+y values to plot: IS, LM, BP (color coded)
+
+
+#### Plot the curves using ggplot2
+
+```{r plot}
+#plot IS LM BP
+ggplot(data=df, aes(x=value,y=int_rate_s, color=variable))+
+  geom_line() +
+  geom_point(x=y_is,y=int_rate_calc) +
+  labs(title="IS LM BP under a Fixed Exchange Rate Regime",x="Output (Y)",y="Interest Rate (i)",colour="Curve")
+```
+
+
+
+### Floating
+
+#### First, we define our variables. However we only need a few additional ones:
+```{r variables11}
+a_0 <- 80 # autonomous consumption
+a_1 <- 0.8 # marginal propensity to consume
+i_0 <- 25 # autonomous private investment
+i_1 <- -5 # marginal propensity to invest
+g_0 <- 40 # government expenditure
+x_0 <- 25 # autonomous level of exports
+m_0 <- 20 # autonomous level of imports
+m_1 <- 0.15 # marginal propensity to import
+t_rate <- 0.15 # Tax rate
+c_1 <- (a_0+i_0+g_0+x_0-m_0) # autonomous values
+c_2 <- (1-a_1*(1-t_rate)+m_1) # marginal values
+l_1 <- 0.5 # liquidity function for motive 1
+l_2 <- -5 # liquidity function for motive 2
+k_prm <- 6 # increase in financail account (function of the interest rate)
+
+# Additional Variables Required
+x_1 <- 0.4 # marginal propensity to export
+m_2 <- 0.15 # marginal propensity to import
+m_bar <- 115  # money supply
+c_3 <- (l_2*(m_2-c_2)-l_1*(i_1-k_prm)) #marginal values using exports and imports
+```
+
+#### Then we calculate the interest rate, equilibrium y, and exchange rate adjusted for a floating exchange rate regime:
+
+```{r Calculations1}
+int_rate_calc <-(m_bar*(m_2-c_2)-l_1*((x_0-m_0)-c_1))/c_3
+y_calc <- (m_bar/l_1)-(l_2*int_rate_calc/l_1)
+xr_calc <- (c_2*y_calc-c_1-i_1*int_rate_calc)/(x_1-m_1)
+```
+
+```{r print1, echo=FALSE}
+print("Interest rate:")
+int_rate_calc
+print("Output:")
+y_calc
+print("Exchange Rate:")
+xr_calc
+```
+
+#### Create a dataframe with 1000 rows called IS_LM_BP with a column of observation numbers.
+
+```{r df1}
+obs <- c(seq(1,1000,by=1))
+IS_LM_BP <- data.frame(obs)
+head(IS_LM_BP)
+```
+
+#### Perform our dataframe operations to fill it with the values for the curves.
+
+```{r df operations1}
+#Generate Data
+IS_LM_BP["int_rate_s"] <- IS_LM_BP["obs"]/100
+IS_LM_BP["Y_IS"] <- (c_1+xr_calc*(x_1-m_1)+i_1*IS_LM_BP["int_rate_s"])/c_2
+IS_LM_BP["Y_LM"] <- (m_bar/l_1)-(l_2*IS_LM_BP["int_rate_s"]/l_1)
+IS_LM_BP["Y_BP"] <- ((x_0-m_0)+xr_calc*(x_1-m_1)+k_prm*IS_LM_BP["int_rate_s"])/m_2
+
+#Drop obs cols
+IS_LM_BP <- IS_LM_BP[-c(1)]
+head(IS_LM_BP)
+```
+
+#### Calculate the IS, LM, and BP curve equilibrium values. All of the output values should be the same!
+
+```{r curves1}
+y_is = (c_1+xr_calc*(x_1-m_1)+i_1*int_rate_calc)/c_2
+y_lm = (m_bar/l_1)-(l_2*int_rate_calc/l_1)
+y_bp = ((x_0-m_0)+xr_calc*(x_1-m_1)+k_prm*int_rate_calc)/m_2
+```
+
+``` {r curvesprint1, echo=FALSE}
+# Equilibrium interest rate, aggregate output and money supply
+print("Equilibrium level of output from the IS curve:")
+y_is
+
+print("Equilibrium level of output from the LM curve")
+y_lm
+
+print("Equilibrium level of output from the BP curve")
+y_bp
+
+```
+
+#### Melt the dataframe into long format
+
+```{r reshape and plot1}
+#reshapea and rename df 
+df <- melt(IS_LM_BP, id="int_rate_s")
+```
+
+#### Plot the curves using ggplot2
+
+```{r plot1}
+#plot IS LM BP
+ggplot(data=df, aes(x=value,y=int_rate_s, color=variable))+
+  geom_line() +
+  geom_point(x=y_is,y=int_rate_calc) +
+  labs(title="IS LM BP under a Floating Exchange Rate Regime",x="Output (Y)",y="Interest Rate (i)",colour="Curve")
+```
