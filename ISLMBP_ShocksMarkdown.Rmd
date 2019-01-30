@@ -1,0 +1,294 @@
+---
+title: Shocks to a Mundell Fleming Model (IS LM BP) Under Fixed and Floating Exchange
+  Rate Regimes
+author: "Macroeconomics PSME 2018-2019"
+date: "November 28, 2018"
+output: html_document
+---
+
+```{r setup_and_functions, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("reshape2")
+library("ggplot2")
+library("gridExtra")
+
+#define Fixed calculators
+int_rate_calc_fixed <-function (x_0,m_0,m_1,c_1,c_2,i_1,k_prm) {
+  (((x_0-m_0)/m_1)-(c_1/c_2))/((i_1/c_2)-(k_prm/m_1))
+}
+
+y_calc_fixed <- function(x_0,m_0,m_1,k_prm,int_rate_calc){
+  ((x_0-m_0)/m_1)+(k_prm*int_rate_calc/m_1)
+}
+
+m_no_bar_fixed <- function(l_1,l_2,y_calc,int_rate_calc){
+ (l_1*y_calc+l_2*int_rate_calc) 
+}
+
+y_is_fixed <- function(c_1,c_2,i_1,int_rate){
+  (c_1/c_2)+(i_1*int_rate/c_2)
+}
+
+y_lm_fixed <- function(m_no_bar,l_1,l_2,int_rate){
+  (m_no_bar/l_1)-(l_2*int_rate/l_1)
+}
+
+y_bp_fixed <-function(x_0,m_0,m_1,k_prm,int_rate){
+  ((x_0-m_0)/m_1)+(k_prm*int_rate/m_1)
+}
+
+fixed <- function(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1){
+  c_1 <- (a_0+i_0+g_0+x_0-m_0) # autonomous values
+  c_2 <- (1-a_1*(1-t_rate)+m_1) # marginal values
+  
+  int_rate_calc <- (((x_0-m_0)/m_1)-(c_1/c_2))/((i_1/c_2)-(k_prm/m_1))
+  y_calc <- ((x_0-m_0)/m_1)+(k_prm*int_rate_calc/m_1)
+  m_no_bar <- l_1*y_calc+l_2*int_rate_calc
+
+  # Generate Equilibrium levels
+  y_is = (c_1/c_2)+(i_1*int_rate_calc/c_2)
+  y_lm = (m_no_bar/l_1)-(l_2*int_rate_calc/l_1)
+  y_bp = ((x_0-m_0)/m_1)+(k_prm*int_rate_calc/m_1)
+  
+  values <- c(int_rate_calc,m_no_bar,y_is,y_lm,y_bp)
+  names(values) <- c("Interest Rate:", "Money Supply:", "Y IS", "Y_LM", "Y_BP")
+  return(values)
+  
+}
+
+
+fixed_df <- function(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1){
+  c_1 <- (a_0+i_0+g_0+x_0-m_0) # autonomous values
+  c_2 <- (1-a_1*(1-t_rate)+m_1) # marginal values
+  
+  int_rate_calc <- (((x_0-m_0)/m_1)-(c_1/c_2))/((i_1/c_2)-(k_prm/m_1))
+  y_calc <- ((x_0-m_0)/m_1)+(k_prm*int_rate_calc/m_1)
+  m_no_bar <- l_1*y_calc+l_2*int_rate_calc
+  
+  # Create empty dataframe with 1000 rows
+  obs <- c(seq(1,1000,by=1))
+  IS_LM_BP <- data.frame(obs)
+  
+  # Generate Data
+  IS_LM_BP["int_rate_s"] <- IS_LM_BP["obs"]/100
+  IS_LM_BP["Y_IS"] <- (c_1/c_2)+(i_1*IS_LM_BP["int_rate_s"]/c_2)
+  IS_LM_BP["Y_LM"] <- (m_no_bar/l_1)-(l_2*IS_LM_BP["int_rate_s"]/l_1)
+  IS_LM_BP["Y_BP"] <- ((x_0-m_0)/m_1)+(k_prm*IS_LM_BP["int_rate_s"]/m_1)
+  
+  # Drop obs column
+  IS_LM_BP <- IS_LM_BP[-c(1)]
+  df <- melt(IS_LM_BP, id="int_rate_s")
+  
+}
+
+#Floating calcs
+int_rate_calc_float <- function(x_0,m_bar,m_0,m_2,c_1,c_2,c_3,l_1) {
+  (m_bar*(m_2-c_2)-l_1*((x_0-m_0)-c_1))/c_3
+  }
+
+y_calc_float <- function(m_bar,l_1,l_2,int_rate_calc){
+  (m_bar/l_1)-(l_2*int_rate_calc/l_1)
+}
+
+xr_calc_float <-function(c_1,c_2,y_calc,i_1,int_rate_calc,x_1,m_1){
+  (c_2*y_calc-c_1-i_1*int_rate_calc)/(x_1-m_1)
+}
+
+y_is_float <-function(c_1,c_2,x_1,m_1,i_1,xr_calc,int_rate){
+  (c_1+xr_calc*(x_1-m_1)+i_1*int_rate)/c_2
+}
+
+y_lm_float <- function(m_bar,l_1,l_2,int_rate){
+  (m_bar/l_1)-(l_2*int_rate/l_1)
+}
+
+y_bp_float <- function(x_0,x_1,m_0,m_1,m_2,xr_calc,k_prm,int_rate){
+  ((x_0-m_0)+xr_calc*(x_1-m_1)+k_prm*int_rate)/m_2
+}
+
+float <- function(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1,m_2,m_bar){
+  c_1 <- (a_0+i_0+g_0+x_0-m_0) # autonomous values
+  c_2 <- (1-a_1*(1-t_rate)+m_2) # marginal values
+  c_3 <- (l_2*(m_2-c_2)-l_1*(i_1-k_prm)) #marginal values using exports and imports
+  
+  # Calculate equilibrium Interest Rate, Output, and Exch Rate
+  int_rate_calc <- int_rate_calc_float(x_0,m_bar,m_0,m_2,c_1,c_2,c_3,l_1)
+  y_calc <- y_calc_float(m_bar,l_1,l_2,int_rate_calc)
+  xr_calc <- xr_calc_float(c_1,c_2,y_calc,i_1,int_rate_calc,x_1,m_1)
+  
+  obs <- c(seq(1,1000,by=1))
+  IS_LM_BP <- data.frame(obs)
+
+  # Generate Data for each observation
+  IS_LM_BP["int_rate_s"] <- IS_LM_BP["obs"]/100
+  IS_LM_BP["Y_IS"] <- y_is_float(c_1,c_2,x_1,m_1,i_1,xr_calc,IS_LM_BP['int_rate_s'])
+  IS_LM_BP["Y_LM"] <- y_lm_float(m_bar,l_1,l_2,IS_LM_BP['int_rate_s'])
+  IS_LM_BP["Y_BP"] <- y_bp_float(x_0,x_1,m_0,m_1,m_2,xr_calc,k_prm,IS_LM_BP['int_rate_s'])
+
+  # Drop obs column
+  IS_LM_BP <- IS_LM_BP[-c(1)]
+  df <- melt(IS_LM_BP, id="int_rate_s")
+
+  
+  y_is <- y_is_float(c_1,c_2,x_1,m_1,i_1,xr_calc,int_rate_calc)
+  y_lm <- y_lm_float(m_bar,l_1,l_2,int_rate_calc)
+  y_bp <- y_bp_float(x_0,x_1,m_0,m_1,m_2,xr_calc,k_prm,int_rate_calc)
+  
+  values <- c(int_rate_calc,xr_calc,y_is,y_lm,y_bp)
+  names(values) <- c("Interest Rate:", "Exchange Rate:", "Y IS", "Y_LM", "Y_BP")
+  return(values)
+}
+
+float_df <- function(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1,m_2,m_bar){
+  c_1 <- (a_0+i_0+g_0+x_0-m_0) # autonomous values
+  c_2 <- (1-a_1*(1-t_rate)+m_2) # marginal values
+  c_3 <- (l_2*(m_2-c_2)-l_1*(i_1-k_prm)) #marginal values using exports and imports
+  
+  # Calculate equilibrium Interest Rate, Output, and Exch Rate
+  int_rate_calc <- int_rate_calc_float(x_0,m_bar,m_0,m_2,c_1,c_2,c_3,l_1)
+  y_calc <- y_calc_float(m_bar,l_1,l_2,int_rate_calc)
+  xr_calc <- xr_calc_float(c_1,c_2,y_calc,i_1,int_rate_calc,x_1,m_1)
+  
+  obs <- c(seq(1,1000,by=1))
+  IS_LM_BP <- data.frame(obs)
+
+  # Generate Data for each observation
+  IS_LM_BP["int_rate_s"] <- IS_LM_BP["obs"]/100
+  IS_LM_BP["Y_IS"] <- y_is_float(c_1,c_2,x_1,m_1,i_1,xr_calc,IS_LM_BP['int_rate_s'])
+  IS_LM_BP["Y_LM"] <- y_lm_float(m_bar,l_1,l_2,IS_LM_BP['int_rate_s'])
+  IS_LM_BP["Y_BP"] <- y_bp_float(x_0,x_1,m_0,m_1,m_2,xr_calc,k_prm,IS_LM_BP['int_rate_s'])
+
+  # Drop obs column
+  IS_LM_BP <- IS_LM_BP[-c(1)]
+  df <- melt(IS_LM_BP, id="int_rate_s")
+  return(df)
+}
+
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+
+## Shock to a floating exchange rate regime
+
+#### Initial Variables
+
+```{r variables1}
+a_0 <- 80 # autonomous consumption
+a_1 <- 0.8 # marginal propensity to consume
+i_0 <- 25 # autonomous private investment
+i_1 <- -5 # investment sensitivity to the interest rate
+g_0 <- 40 # government expenditure
+x_0 <- 25 # autonomous level of exports
+m_0 <- 20 # autonomous level of imports
+m_1 <- 0.15 # marginal propensity to import as a function of interest rate
+t_rate <- 0.15 # Tax rate
+l_1 <- 0.5 # liquidity function for motive 1
+l_2 <- -5 # liquidity function for motive 2
+k_prm <- 6 # increase in financial account (function of the interest rate)
+x_1 <- 0.4 # marginal propensity to export
+m_2 <- 0.15 # marginal propensity to import as a function of output
+m_bar <- 115.76  # money supply
+
+```
+
+#### What happens when we change the tax rate from .15 to .10?
+
+```{r shock1, echo=FALSE}
+
+#change tax rate from .15 to .10
+t_rate <- .15
+t_rate_2 <- .10
+
+
+pre_float <- float(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1,m_2,m_bar)
+pre_float_df <- float_df(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1,m_2,m_bar)
+post_float <- float(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate_2,l_1,l_2,k_prm,x_1,m_2,m_bar)
+post_float_df <- float_df(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate_2,l_1,l_2,k_prm,x_1,m_2,m_bar)
+
+pre_fixed <- fixed(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1)
+pre_fixed_df <- fixed_df(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1)
+post_fixed <- fixed(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate_2,l_1,l_2,k_prm,x_1)
+post_fixed_df <- fixed_df(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate_2,l_1,l_2,k_prm,x_1)
+
+print("Floating:")
+print("Pre-Shock")
+pre_float
+print("Post-Shock")
+post_float
+
+ggplot(data=NULL, aes(x=value,y=int_rate_s, color=variable), show.legend = FALSE)+
+  geom_line(data=pre_float_df) +
+  geom_line(data=post_float_df, linetype="dashed") +
+  labs(title="Floating Exchange Rate Shock", x="Output (Y)",y="Interest Rate (i)",colour="Curve") +
+  ylim(0,10) +
+  xlim(0,500)
+
+print("Fixed:")
+print("Pre-Shock")
+pre_fixed
+print("Post-Shock")
+post_fixed
+
+ggplot(data=NULL, aes(x=value,y=int_rate_s, color=variable))+
+  geom_line(data=pre_fixed_df) +
+  geom_line(data=post_fixed_df, linetype = "dashed") +
+  labs(title="Fixed Exchange Rate Shock",x="Output (Y)",y="Interest Rate (i)",colour="Curve") +
+  ylim(0,10) +
+  xlim(0,500)
+
+```
+
+
+#### What happens when we change the money supply from 115.76 to 120?
+
+```{r shock2, echo=FALSE}
+
+#change money supply m_bar from 115.76 to 120
+m_bar <- 115.76
+m_bar_2 <- 120
+
+
+pre_float <- float(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1,m_2,m_bar)
+pre_float_df <- float_df(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1,m_2,m_bar)
+post_float <- float(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1,m_2,m_bar_2)
+post_float_df <- float_df(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1,m_2,m_bar_2)
+
+pre_fixed <- fixed(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1)
+pre_fixed_df <- fixed_df(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1)
+post_fixed <- fixed(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1)
+post_fixed_df <- fixed_df(a_0,a_1,i_0,i_1,g_0,x_0,m_0,m_1,t_rate,l_1,l_2,k_prm,x_1)
+
+print("Floating:")
+print("Pre-Shock")
+pre_float
+print("Post-Shock")
+post_float
+
+ggplot(data=NULL, aes(x=value,y=int_rate_s, color=variable), show.legend = FALSE)+
+  geom_line(data=pre_float_df) +
+  geom_line(data=post_float_df, linetype="dashed") +
+  labs(title="Floating Exchange Rate Shock", x="Output (Y)",y="Interest Rate (i)",colour="Curve") +
+  ylim(0,10) +
+  xlim(0,500)
+
+print("Fixed:")
+print("Pre-Shock")
+pre_fixed
+print("Post-Shock")
+post_fixed
+
+ggplot(data=NULL, aes(x=value,y=int_rate_s, color=variable))+
+  geom_line(data=pre_fixed_df) +
+  geom_line(data=post_fixed_df, linetype = "dashed") +
+  labs(title="Fixed Exchange Rate Shock",x="Output (Y)",y="Interest Rate (i)",colour="Curve") +
+  ylim(0,10) +
+  xlim(0,500)
+
+```
+
